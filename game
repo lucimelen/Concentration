@@ -1,0 +1,488 @@
+import jdk.jfr.internal.Utils;
+import tester.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Random;
+import javalib.impworld.*;
+import java.awt.Color;
+import javalib.worldimages.*;
+
+/**
+ * Represent a utilites class.
+ */
+class Utils {
+
+  // make a deck out of an ArrayList<Integer> and an ArrayList<String>
+  ArrayList<Card> makeDeck(ArrayList<Integer> list1, ArrayList<String> list2) {
+
+    ArrayList<Card> cards = new ArrayList<Card>();
+
+    for (int i = 0; i < list1.size(); i = i + 1) {
+      for (int j = 0; j < list2.size(); j = j + 1) {
+        cards.add(new Card(list1.get(i), list2.get(j)));
+      }
+    }
+    return cards;
+
+    // seconds per frame
+    public static final double SEC_PER_TICK = 1.0 / 60.0;
+
+    // card dimensions
+    public static final int CARD_WIDTH = 120;
+    public static final int CARD_HEIGHT = 200;
+
+    // background dimensions
+    public static final int BG_WIDTH = 13 * Globals.CARD_WIDTH;
+    public static final int BG_HEIGHT = 4 * Globals.CARD_HEIGHT + Globals.HEADER_HEIGHT;
+
+    // header dimensions
+    public static final int HEADER_HEIGHT = 70;
+
+    // base images
+    public static final WorldScene EMPTY = new WorldScene(Globals.BG_WIDTH, Globals.BG_HEIGHT);
+    public static final WorldImage BG = new RectangleImage(
+            Globals.BG_WIDTH,
+            Globals.BG_HEIGHT,
+            OutlineMode.SOLID,
+            Color.BLUE);
+    public static final WorldImage CARD_BASE = new RectangleImage(Globals.CARD_WIDTH,
+            Globals.CARD_HEIGHT,
+            OutlineMode.SOLID,
+            Color.WHITE);
+    public static final WorldImage CARD_BACK = new OverlayImage(
+            new RectangleImage(Globals.CARD_WIDTH - 20,
+                    Globals.CARD_HEIGHT - 20,
+                    OutlineMode.OUTLINE,
+                    Color.BLUE),
+            Globals.CARD_BASE);
+    public static final WorldImage CONCENTRATION_TITLE = new TextImage(
+            "♥ ♦ ♠ ♣ CONCENTRATION ♥ ♦ ♠ ♣",
+            40,
+            FontStyle.BOLD_ITALIC,
+            Color.WHITE);
+    public static final WorldImage WIN_SCREEN = new OverlayImage(
+            new TextImage(
+                    "You win!",
+                    80,
+                    FontStyle.BOLD,
+                    Color.WHITE),
+            Globals.BG);
+
+    public static WorldImage cardFrontImage(Card c) {
+      if (c.suit.equals("♥") || c.suit.equals("♦")) {
+        return new OverlayOffsetAlign(
+                AlignModeX.CENTER,
+                AlignModeY.MIDDLE,
+                new TextImage(c.suit, 40, FontStyle.BOLD, Color.RED),
+                10,
+                0,
+                new OverlayOffsetAlign(
+                        AlignModeX.LEFT,
+                        AlignModeY.TOP,
+                        new TextImage(c.valToString(), 30, FontStyle.BOLD, Color.BLUE),
+                        -15,
+                        -10,
+                        Globals.CARD_BACK));
+      }
+      else {
+        return new OverlayOffsetAlign(
+                AlignModeX.CENTER,
+                AlignModeY.MIDDLE,
+                new TextImage(c.suit, 40, FontStyle.BOLD, Color.BLACK),
+                10,
+                0,
+                new OverlayOffsetAlign(
+                        AlignModeX.LEFT,
+                        AlignModeY.TOP,
+                        new TextImage(c.valToString(), 30, FontStyle.BOLD, Color.BLUE),
+                        -15,
+                        -10,
+                        Globals.CARD_BACK));
+      }
+    }
+    
+    public static WorldImage scoreImage(int score) {
+      return new TextImage(
+              "Score: " + Integer.toString(score),
+              30,
+              FontStyle.BOLD,
+              Color.WHITE);
+    }
+  }
+
+
+  /**
+   * Create a random deck of cards.
+   * @param rand random value.
+   * @param numCards size of deck.
+   * @return a random deck of cards.
+   */
+  ArrayList<Card> makeRandomDeck(Random rand, int numCards) {
+    ArrayList<Card> cards = new ArrayList<Card>();
+
+    ArrayList<Integer> cardsHit = new ArrayList<Integer>();
+    while (cardsHit.size() < numCards) {
+      int idx = rand.nextInt(numCards);
+
+      if (cardsHit.contains(idx)) {
+        continue;
+      }
+      else {
+        String suit = (idx / 13 < 2) ? ((idx / 13 == 0) ? "♥" : "♦")
+                : ((idx / 13 == 2) ? "♣" : "♠");
+        cards.add(new Card(idx % 13 + 1, suit));
+        cardsHit.add(idx);
+      }
+    }
+
+    return cards;
+  }
+}
+
+/**
+ * Representing a card with a value and suit.
+ */
+class Card {
+  int value;
+  String suit;
+
+  Card(int v, String s) {
+    this.value = v;
+    this.suit = s;
+  }
+
+  /**
+   * {1, 11, 12, 13} -> {"A", "J", "Q", "K"}
+   * @return card value as String
+   */
+  public String valToString() {
+    if (2 <= this.value && this.value <= 10) {
+      return Integer.toString(this.value);
+    }
+    else if (this.value == 1) {
+      return "A";
+    }
+    else if (this.value == 11) {
+      return "J";
+    }
+    else if (this.value == 12) {
+      return "Q";
+    }
+    else if (this.value == 13) {
+      return "K";
+    }
+    else {
+      return "";
+    }
+  }
+
+  /**
+   * Draw a card on a WorldScene.
+   * @param curr current WorldScene
+   * @param row of card's position
+   * @param col of card's position
+   * @param flipped true if flipped, false otherwise
+   */
+  public void draw(WorldScene curr, int row, int col, boolean flipped) {
+    int colInc = Utils.CARD_WIDTH / 2;
+    int rowInc = Utils.CARD_HEIGHT / 2;
+    int cIdx = 2 * col + 1;
+    int rIdx = 2 * row + 1;
+
+    if (flipped) {
+      curr.placeImageXY(
+              Utils.cardFrontImage(this),
+              cIdx * colInc,
+              rIdx * rowInc + Utils.HEADER_HEIGHT);
+    }
+    else {
+      scene.placeImageXY(
+              Utils.CARD_BACK,
+              cIdx * colInc,
+              rIdx * rowInc + Utils.HEADER_HEIGHT);
+    }
+  }
+
+  /**
+   * Determine if two Cards are the same.
+   * @param other card for comparison
+   * @return true if equal, false otherwise
+   */
+  public boolean sameCard(Card other) {
+    boolean hd1 = this.suit.equals("♥") || this.suit.equals("♦");
+    boolean hd2 = other.suit.equals("♥") || other.suit.equals("♦");
+    return this.value == other.value && hd1 == hd2;
+  }
+}
+
+/**
+ * Representing a deck of cards.
+ */
+class Deck {
+  ArrayList<Card> cards;
+  int pos;
+
+  Utils u = new Utils();
+
+  // default constructor
+  Deck(ArrayList<Card> cards) {
+    ArrayList<Integer> vals = new ArrayList<Integer>(
+            Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13));
+
+    ArrayList<String> suits = new ArrayList<String>(
+            Arrays.asList("♥", "♦", "♠", "♣"));
+
+    this.cards = this.au.makeDeck(vals, suits);
+    this.pos = 0;
+  }
+
+  // random constructor, returns shuffled deck
+  Deck(Random rand) {
+    this.pos = 0;
+    this.cards = this.au.makeRandomDeck(rand, 52);
+  }
+
+  /**
+   * Returns card from a deck.
+   * @return Card
+   */
+  public Card deal() {
+    this.pos += 1;
+    return this.cards.get(this.pos - 1);
+  }
+}
+
+/**
+ * Represent a world for gameplay.
+ */
+class ConcentrationWorld extends World {
+  ArrayList<ArrayList<Card>> cardGrid;    // 4 x 13
+  ArrayList<ArrayList<Boolean>> flipped;  // 4 x 13
+
+  Card focus;
+  ArrayList<Posn> locs;
+  Boolean suitGroup;   // {true, false} -> {H/D, S/C}
+  int score;
+
+  int tickTimer;
+  int tickThresh;
+  boolean delay;
+
+  WorldScene currScene;
+
+  /**
+   * Set up an initial Concentration game.
+   */
+  ConcentrationWorld() {
+    this.cardGrid = new ArrayList<ArrayList<Card>>(4);
+    Deck deck = new Deck(new Random(0));  // Shuffled deck
+    this.setupBoard(deck);                // Card Grid
+    this.flipped = new ArrayList<ArrayList<Boolean>>(4);
+
+    this.focus = null;
+    this.locs = new ArrayList<Posn>();
+    this.suitGroup = null;
+    this.score = 26;
+
+    this.tickTimer = 0;
+    this.tickThresh = 0;
+    this.delay = false;
+
+    this.currScene = null;
+
+    for (int i = 0; i < 4; i++) {
+      this.flipped.add(new ArrayList<Boolean>());
+
+      for (int j = 0; j < 13; j++) {
+        this.flipped.get(i).add(false);
+      }
+    }
+  }
+
+  /**
+   * Creates a Concentration game mid-play
+   * @param flipPos cards to be flipped
+   * @param foc card in focus
+   * @param locs locations of cards to be flipped
+   * @param score of game
+   */
+  ConcentrationWorld(ArrayList<Posn> flipPos,
+                     Card foc,
+                     ArrayList<Posn> locs,
+                     int score) {
+
+    this();
+
+    for (int i = 0; i < flipPos.size(); i++) {
+      this.flipped.get(flipPos.get(i).x).set(flipPos.get(i).y, true);
+    }
+
+    this.focus = foc;
+    this.locs = locs;
+    this.score = score;
+
+    this.delay = false;
+    this.tickTimer = 0;
+    this.tickThresh = 0;
+  }
+
+  // Put the cards in d into this.cardGrid in 4 x 13 grid
+  public void setupBoard(Deck d) {
+    for (int i = 0; i < 4; i++) {
+      this.cardGrid.add(new ArrayList<Card>());
+
+      for (int j = 0; j < 13; j++) {
+        this.cardGrid.get(i).add(d.deal());
+      }
+    }
+  }
+
+
+  /**
+   * Draw the game.
+   * @return WorldScene with game drawn.
+   */
+  public WorldScene makeScene() {
+    if (this.delay) {
+      return this.currScene;
+    }
+
+    WorldScene start = Utils.EMPTY;
+
+    if (this.score == 0) {
+      start.placeImageXY(Utils.WIN_SCREEN, Utils.BG_WIDTH / 2, Utils.BG_HEIGHT / 2);
+      this.currScene = start;
+      return start;
+    }
+
+    start.placeImageXY(Utils.BG, Utils.BG_WIDTH / 2, Utils.BG_HEIGHT / 2);
+    start.placeImageXY(Utils.CONCENTRATION_TITLE, Utils.BG_WIDTH / 2, Utils.HEADER_HEIGHT / 2);
+    start.placeImageXY(Utils.scoreImage(this.score), Utils.BG_WIDTH - 90, 35);
+
+    for (int i = 0; i < this.cardGrid.size(); i++) {
+      for (int j = 0; j < this.cardGrid.get(0).size(); j++) {
+        this.cardGrid.get(i).get(j).draw(start, i, j, this.flipped.get(i).get(j));
+      }
+    }
+
+    this.currScene = start;
+    return start;
+  }
+
+  /**
+   * Flip card where user clicks.
+   * @param pos of card to be flipped
+   */
+  public void onMouseClicked(Posn pos) {
+    int row = (pos.y - Utils.HEADER_HEIGHT) / Utils.CARD_HEIGHT;
+    int col = pos.x / Utils.CARD_WIDTH;
+    Card selection = this.cardGrid.get(row).get(col);
+
+    if (this.score == 0 || this.delay) {
+      return;
+    }
+
+    if (this.flipped.get(row).get(col)) {
+      return;
+    }
+
+    if (this.focus == null) {
+      this.focus = selection;
+      this.flipped.get(row).set(col, true);
+      this.locs.add(new Posn(row, col));
+      this.suitGroup = selection.suit.equals("♥") || selection.suit.equals("♦");
+    }
+    else {
+      this.flipped.get(row).set(col, true);
+      this.locs.add(new Posn(row, col));
+
+      this.currScene = this.makeScene();
+
+      this.setTimer(4);
+
+      if (selection.sameCard(this.focus)) {
+        this.score -= 1;
+        this.resetTurn();
+      }
+      else {
+        this.unflip();
+        this.resetTurn();
+      }
+    }
+  }
+
+  /**
+   * Unflip two selected cards.
+   */
+  public void unflip() {
+    Posn tmp = this.locs.get(0);
+    this.flipped.get(tmp.x).set(tmp.y, false);
+
+    tmp = this.locs.get(1);
+    this.flipped.get(tmp.x).set(tmp.y,  false);
+  }
+
+  /**
+   * Reset values to keep track of current selection.
+   */
+  public void resetTurn() {
+    this.focus = null;
+    this.locs.clear();
+    this.suitGroup = null;
+  }
+
+  /**
+   * Help the game progress.
+   */
+  public void onTick() {
+    if (this.delay) {
+      if (this.tickTimer >= this.tickThresh) {
+        this.delay = false;
+        this.tickTimer = 0;
+      }
+      else {
+        this.tickTimer += 1;
+      }
+    }
+  }
+
+  /**
+   * Set timer to specified number of ticks.
+   * @param ticks before timer ends
+   */
+  public void setTimer(int ticks) {
+    this.tickThresh = ticks;
+    this.delay = true;
+    this.tickTimer = 0;
+  }
+
+  /**
+   * Restart the game.
+   * @param key pressed by user
+   */
+  public void onKeyEvent(String key) {
+    if (key.equals("r")) {
+      // Reset cardGrid
+      this.cardGrid = new ArrayList<ArrayList<Card>>();
+      Deck deck = new Deck(new Random(0));
+      this.setupBoard(deck);
+
+      // Reset flipped
+      for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 13; j++) {
+          this.flipped.get(i).set(j, false);
+        }
+      }
+
+      // Reset focus, locs, score
+      this.focus = null;
+      this.locs.clear();
+      this.suitGroup = null;
+      this.score = 26;
+
+      this.tickTimer = 0;
+      this.tickThresh = 0;
+      this.delay = false;
+    }
+  }
+}
